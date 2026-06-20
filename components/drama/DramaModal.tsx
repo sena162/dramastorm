@@ -4,7 +4,7 @@ import { useEffect } from 'react'
 import { X, Play, Plus, Check, Star, Lock } from 'lucide-react'
 import { useStore } from '@/lib/store'
 import { getBadgeLabel, getBadgeStyle, getRatingColor, cn } from '@/lib/utils'
-import './DramaModel.css'
+
 
 export default function DramaModal() {
   const { selectedDrama, closeModal, isInWatchList, addToWatchList, removeFromWatchList, isPremium } = useStore()

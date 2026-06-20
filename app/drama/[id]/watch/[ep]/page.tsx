@@ -1,8 +1,9 @@
 import { notFound } from 'next/navigation'
 import { ArrowLeft, Lock, Play } from 'lucide-react'
 import Link from 'next/link'
-import { getDramaById } from '@/lib/data'
+import { getDramaById, getEpisodes } from '@/lib/data'
 import { cn } from '@/lib/utils'
+import VideoPlayer from '@/components/drama/VideoPlayer'
 
 interface Props {
   params: Promise<{ id: string; ep: string }>
@@ -16,7 +17,11 @@ const episodeTitles = [
 
 export default async function WatchPage({ params }: Props) {
   const { id, ep } = await params
-  const drama = getDramaById(Number(id))
+  const [drama, episodes] = await Promise.all([
+    getDramaById(Number(id)),
+    getEpisodes(Number(id)),
+  ])
+
   if (!drama) notFound()
 
   const epNum = Number(ep)
@@ -25,6 +30,8 @@ export default async function WatchPage({ params }: Props) {
   const epTitle = episodeTitles[epNum - 1] ?? `Bölüm ${epNum}`
   const prevEp = epNum > 1 ? epNum - 1 : null
   const nextEp = epNum < drama.totalEpisodes ? epNum + 1 : null
+  const currentEpisode = episodes.find((e: any) => e.number === epNum)
+  const videoUrl = currentEpisode?.video_url || null
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
@@ -49,7 +56,6 @@ export default async function WatchPage({ params }: Props) {
         {/* Video alanı */}
         <div className="flex-1">
           {isLocked ? (
-            /* Kilitli içerik */
             <div className="rounded-2xl flex flex-col items-center justify-center gap-4 py-24 border"
               style={{ background: 'var(--card)', borderColor: 'var(--border)' }}>
               <Lock size={48} style={{ color: 'var(--accent)' }} />
@@ -59,36 +65,20 @@ export default async function WatchPage({ params }: Props) {
               <p className="text-sm text-center max-w-xs" style={{ color: 'var(--muted)' }}>
                 İlk {freeEpisodes} bölüm ücretsiz. Devamı için Premium üyelik gerekiyor.
               </p>
-              <button
+              <Link href="/premium"
                 className="flex items-center gap-2 px-6 py-3 rounded-lg font-bold text-black text-sm mt-2"
                 style={{ background: 'var(--accent)' }}>
                 ⚡ Premium'a Geç
-              </button>
+              </Link>
             </div>
           ) : (
-            /* Video player */
             <div>
-              <div className="rounded-2xl overflow-hidden relative"
-                style={{ background: '#000', aspectRatio: '16/9' }}>
-                <div
-                  className="w-full h-full flex flex-col items-center justify-center gap-4"
-                  style={{ background: drama.bgGradient }}>
-                  <div className="text-7xl">{drama.emoji}</div>
-                  <div className="text-center">
-                    <p className="font-bold text-lg mb-1" style={{ color: 'var(--text)' }}>
-                      {drama.title}
-                    </p>
-                    <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                      Bölüm {epNum} — {epTitle}
-                    </p>
-                  </div>
-                  <button
-                    className="w-16 h-16 rounded-full flex items-center justify-center mt-2"
-                    style={{ background: 'var(--accent)' }}>
-                    <Play size={28} fill="black" color="black" />
-                  </button>
-                </div>
-              </div>
+              <VideoPlayer
+                url={videoUrl}
+                title={`${drama.title} — Bölüm ${epNum}`}
+                emoji={drama.emoji}
+                bgGradient={drama.bgGradient}
+              />
 
               {/* Navigasyon */}
               <div className="flex items-center justify-between mt-4">
@@ -99,11 +89,9 @@ export default async function WatchPage({ params }: Props) {
                     ← Bölüm {prevEp}
                   </Link>
                 ) : <div />}
-
                 <span className="text-sm" style={{ color: 'var(--muted)' }}>
                   {epNum} / {drama.totalEpisodes}
                 </span>
-
                 {nextEp ? (
                   <Link href={`/drama/${drama.id}/watch/${nextEp}`}
                     className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm border transition-colors hover:bg-white/5"
@@ -116,19 +104,17 @@ export default async function WatchPage({ params }: Props) {
           )}
         </div>
 
-        {/* Sağ panel — bölüm listesi */}
+        {/* Sağ panel */}
         <div className="lg:w-72 flex-shrink-0">
-          <h3 className="text-sm font-bold mb-3" style={{ color: 'var(--text)' }}>
-            Bölümler
-          </h3>
+          <h3 className="text-sm font-bold mb-3" style={{ color: 'var(--text)' }}>Bölümler</h3>
           <div className="flex flex-col gap-1.5 max-h-[600px] overflow-y-auto pr-1">
             {Array.from({ length: Math.min(drama.totalEpisodes, 20) }, (_, i) => {
               const n = i + 1
               const locked = n > freeEpisodes
               const active = n === epNum
+              const epItem = episodes.find((e: any) => e.number === n)
               return (
-                <Link
-                  key={n}
+                <Link key={n}
                   href={locked ? '#' : `/drama/${drama.id}/watch/${n}`}
                   className={cn(
                     'flex items-center gap-3 px-3 py-2.5 rounded-lg border text-sm transition-colors',
@@ -138,15 +124,14 @@ export default async function WatchPage({ params }: Props) {
                   style={{
                     background: active ? 'rgba(201,162,39,0.1)' : 'var(--card)',
                     borderColor: active ? 'rgba(201,162,39,0.4)' : 'var(--border)',
-                  }}
-                >
+                  }}>
                   <span className="w-5 text-xs text-center font-mono"
                     style={{ color: active ? 'var(--accent)' : 'var(--muted)' }}>
                     {n}
                   </span>
                   <span className="flex-1 truncate"
                     style={{ color: active ? 'var(--accent)' : 'var(--text)' }}>
-                    {episodeTitles[i] ?? `Bölüm ${n}`}
+                    {epItem?.title ?? episodeTitles[i] ?? `Bölüm ${n}`}
                   </span>
                   {locked
                     ? <Lock size={11} style={{ color: 'var(--accent)' }} />
