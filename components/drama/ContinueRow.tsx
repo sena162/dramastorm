@@ -2,21 +2,15 @@
 
 import { Play } from 'lucide-react'
 import { useStore } from '@/lib/store'
-import { dramas } from '@/lib/data'
-import { useStore as useModal } from '@/lib/store'
+import { Drama } from '@/types/drama'
 
-export default function ContinueRow() {
-  const { watchProgress, openModal } = useModal()
+interface Props {
+  dramas: Drama[]
+}
 
-  // İzleme geçmişi olan dizileri bul
-  const continueItems = watchProgress
-    .map((p) => ({
-      progress: p,
-      drama: dramas.find((d) => d.id === p.dramaId),
-    }))
-    .filter((item) => item.drama !== undefined)
+export default function ContinueRow({ dramas }: Props) {
+  const { watchProgress, openModal } = useStore()
 
-  // Geçmiş yoksa örnek göster
   const mockItems = dramas.slice(0, 4).map((drama, i) => ({
     drama,
     progress: {
@@ -27,19 +21,24 @@ export default function ContinueRow() {
     },
   }))
 
-  const items = continueItems.length > 0 ? continueItems : mockItems
+  const continueItems = watchProgress.length > 0
+    ? watchProgress
+        .map((p) => ({
+          progress: p,
+          drama: dramas.find((d) => d.id === p.dramaId),
+        }))
+        .filter((item) => item.drama !== undefined)
+    : mockItems
 
-  if (items.length === 0) return null
+  if (continueItems.length === 0) return null
 
   return (
     <section>
       <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--text)' }}>
         Kaldığın Yerden <span style={{ color: 'var(--accent)' }}>Devam Et</span>
       </h2>
-
-      <div className="flex gap-4 overflow-x-auto pb-2"
-        style={{ scrollbarWidth: 'thin' }}>
-        {items.map(({ drama, progress }) => {
+      <div className="flex gap-4 overflow-x-auto pb-2" style={{ scrollbarWidth: 'thin' }}>
+        {continueItems.map(({ drama, progress }) => {
           if (!drama) return null
           return (
             <div
@@ -48,13 +47,9 @@ export default function ContinueRow() {
               style={{ background: 'var(--card)', borderColor: 'var(--border)' }}
               onClick={() => openModal(drama)}
             >
-              {/* Thumbnail */}
-              <div
-                className="relative h-32 flex items-center justify-center text-4xl"
-                style={{ background: drama.bgGradient }}
-              >
+              <div className="relative h-32 flex items-center justify-center text-4xl"
+                style={{ background: drama.bgGradient }}>
                 {drama.emoji}
-                {/* Play overlay */}
                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                   <div className="w-10 h-10 rounded-full flex items-center justify-center"
                     style={{ background: 'var(--accent)' }}>
@@ -62,22 +57,11 @@ export default function ContinueRow() {
                   </div>
                 </div>
               </div>
-
-              {/* Progress bar */}
               <div className="h-1" style={{ background: 'var(--border)' }}>
-                <div
-                  className="h-full transition-all"
-                  style={{
-                    width: `${progress.progressPercent}%`,
-                    background: 'var(--accent)',
-                  }}
-                />
+                <div className="h-full" style={{ width: `${progress.progressPercent}%`, background: 'var(--accent)' }} />
               </div>
-
-              {/* Bilgi */}
               <div className="p-3">
-                <div className="text-sm font-semibold truncate mb-1"
-                  style={{ color: 'var(--text)' }}>
+                <div className="text-sm font-semibold truncate mb-1" style={{ color: 'var(--text)' }}>
                   {drama.title}
                 </div>
                 <div className="text-xs" style={{ color: 'var(--muted)' }}>
